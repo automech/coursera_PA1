@@ -1,0 +1,144 @@
+```{r global_options, include=FALSE}
+
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE,fig.path="./fig/")
+
+```
+
+## Coursera Assignment Report
+
+```{r load_data}
+# loading dataset and required packages
+activity<- read.csv(file.choose())
+summary(activity)
+
+require(ggplot2)
+
+```
+
+### question 1
+```{r q_1}
+
+
+total_step_by_date=data.frame("total_steps_per_day"=with(na.omit(activity), tapply(steps, date, sum)))
+total_step_by_date<- na.omit(total_step_by_date)
+
+cat("Mean of number of steps per day: ",mean(total_step_by_date$total_steps_per_day))
+cat("Median of number of steps per day: ",median(total_step_by_date$total_steps_per_day))
+
+m<- ggplot(total_step_by_date,aes(x=total_steps_per_day))+geom_histogram(aes(fill=..count..),binwidth=1000)+ theme(legend.position='none')+
+        geom_vline(x= mean(total_step_by_date$total_steps_per_day),linetype="solid", size=1, colour="red")+
+        geom_vline(x= median(total_step_by_date$total_steps_per_day),linetype="dashed", size=1, colour="blue")
+m
+
+
+
+
+
+
+```
+
+
+### question 2
+
+```{r q_2}
+
+ts <- tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+tsdf<- data.frame("interval"=names(ts),"Mean"=tapply(activity$steps, activity$interval, mean, na.rm = TRUE))
+cat(" time series plot of the 5-minute interval and the average number of steps taken, averaged across all days")
+ggplot(tsdf,aes(interval,Mean))+geom_point()+geom_line(aes(group=1))
+
+
+cat("5-minute interval, on average across all the days in the dataset which contains the maximum number of steps:", names(which.max(ts)))
+
+
+
+
+```
+
+### question 3
+
+```{r q_3}
+
+
+# Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+cat("The total number of missing values in the dataset: ",sum(is.na(activity)))
+
+# Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+Stepavg <- aggregate(steps ~ interval, data = activity, FUN = mean)
+fillNA <- numeric()
+for (i in 1:nrow(activity)) {
+    obs <- activity[i, ]
+    if (is.na(obs$steps)) {
+        steps <- subset(Stepavg, interval == obs$interval)$steps
+    } else {
+        steps <- obs$steps
+    }
+    
+    fillNA <- c(fillNA, steps)
+}
+
+
+#Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+new_activity<- activity 
+new_activity$steps<- fillNA
+        
+# plot histogram and show means . does it differ?
+
+
+total_step_by_date=data.frame("total_steps_per_day"=with(na.omit(new_activity), tapply(steps, date, sum)))
+total_step_by_date<- na.omit(total_step_by_date)
+
+cat("Mean of number of steps per day: ",mean(total_step_by_date$total_steps_per_day))
+cat("Median of number of steps per day: ",median(total_step_by_date$total_steps_per_day))
+
+m<- ggplot(total_step_by_date,aes(x=total_steps_per_day))+geom_histogram(aes(fill=..count..),binwidth=1000)+ theme(legend.position='none')+
+        geom_vline(x= mean(total_step_by_date$total_steps_per_day),linetype="solid", size=1, colour="red")+
+        geom_vline(x= median(total_step_by_date$total_steps_per_day),linetype="dashed", size=1, colour="blue")
+m
+
+
+cat(" The mean did not change but the median changed a little")
+
+```
+
+
+
+
+### question 4
+```{r q_4}
+#Create a new factor variable in the dataset with two levels - weekday and weekend indicating whether a given date is a weekday or weekend day.
+activity$date <- as.Date(activity$date, "%Y-%m-%d")
+
+day <- weekdays(activity$date)
+daytype <- vector()
+
+for (i in 1:nrow(activity)) {
+    if (day[i] == "Saturday") {
+        daytype[i] <- "Weekend"
+    } else if (day[i] == "Sunday") {
+        daytype[i] <- "Weekend"
+    } else {
+        daytype[i] <- "Weekday"
+    }
+}
+
+activity$daytype <- daytype
+activity$daytype <- factor(activity$daytype)
+
+stepsByDay <- aggregate(steps ~ interval + daytype, data = activity, mean)
+names(stepsByDay) <- c("interval", "daytype", "steps")
+
+
+
+#Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). The plot should look something like the following, which was creating using simulated data:
+
+
+p <- ggplot(stepsByDay, aes(interval, steps)) + geom_line(aes(group=1))
+# With one variable
+p + facet_grid(. ~ daytype)
+
+```
+
